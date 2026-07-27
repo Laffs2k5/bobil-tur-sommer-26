@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { parseTrip } from '../../src/data/trip';
-import { stopPopupHtml } from '../../src/lib/popup';
+import { parseTrip, wakeupStopForDay } from '../../src/data/trip';
+import { stopPopupHtml, wakeupPopupHtml } from '../../src/lib/popup';
 import { MUNICIPALITIES_BY_COUNTY, ALL_MUNICIPALITIES } from '../../src/lib/municipalities';
 import { geojson } from './fixtures';
 
@@ -38,6 +38,26 @@ describe('stopPopupHtml', () => {
     const html = stopPopupHtml(groven);
     expect(html).toContain('Ankomst 20. juli 21:46');
     expect(html).toContain('Avreise 21. juli 12:10');
+  });
+});
+
+describe('wakeupPopupHtml', () => {
+  it('describes the day start with departure time and link for verified sites', () => {
+    const groven = wakeupStopForDay(stops, '2026-07-21')!;
+    const html = wakeupPopupHtml(groven);
+    expect(html).toContain('Dagens start');
+    expect(html).toContain('Groven Camping og Hyttegrend, Åmot');
+    expect(html).toContain('Vinje kommune');
+    expect(html).toContain('Våknet her etter overnatting');
+    expect(html).toContain('Avreise 12:10');
+    expect(html).toContain('Åpne i Google Maps');
+  });
+
+  it('omits the link and notes approximate locality for unverified sites', () => {
+    const unverified = { ...stops.find((s) => !s.verified)! };
+    const html = wakeupPopupHtml(unverified);
+    expect(html).toContain('Omtrentlig stedsangivelse');
+    expect(html).not.toContain('google.com/maps');
   });
 });
 

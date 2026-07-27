@@ -4,6 +4,7 @@ import {
   isOvernight,
   parseTrip,
   stopsForDay,
+  wakeupStopForDay,
 } from '../../src/data/trip';
 import type { TripGeoJson } from '../../src/data/types';
 import { geojson, TRIP_DAYS } from './fixtures';
@@ -138,5 +139,39 @@ describe('stopsForDay', () => {
       s.label.startsWith('Groven'),
     );
     expect(groven).toBeDefined();
+  });
+});
+
+describe('wakeupStopForDay', () => {
+  it('derives each day start from the previous evening’s overnight stop', () => {
+    expect(wakeupStopForDay(stops, '2026-07-21')!.label).toBe(
+      'Groven Camping og Hyttegrend, Åmot',
+    );
+    expect(wakeupStopForDay(stops, '2026-07-22')!.label).toBe(
+      'Garvikstrondi Camping',
+    );
+    expect(wakeupStopForDay(stops, '2026-07-23')!.label).toBe(
+      'Åsgrav Family Camping, Bø',
+    );
+    expect(wakeupStopForDay(stops, '2026-07-24')!.label).toBe(
+      'First Camp Norsjø / Norsjø Kabelpark, Akkerhaugen',
+    );
+  });
+
+  it('has no wakeup for the first trip day (start is inside the privacy fence)', () => {
+    expect(wakeupStopForDay(stops, '2026-07-20')).toBeNull();
+  });
+
+  it('returns null for the all-days view and unknown days', () => {
+    expect(wakeupStopForDay(stops, null)).toBeNull();
+    expect(wakeupStopForDay(stops, '2026-07-25')).toBeNull();
+  });
+
+  it('never picks a short daytime stop, only the overnight band', () => {
+    // The 23rd has a 223-min First Camp visit ending that same day; the
+    // wakeup for the 23rd must instead be Åsgrav from the night before.
+    const wakeup = wakeupStopForDay(stops, '2026-07-23')!;
+    expect(wakeup.overnight).toBe(true);
+    expect(wakeup.date).toBe('2026-07-22');
   });
 });

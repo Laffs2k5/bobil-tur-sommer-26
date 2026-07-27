@@ -20,13 +20,21 @@ Timeline export.
   Maps via their place ID; the eight unverified labels are presented as
   approximate locality descriptions with **no link**, per the dataset rules.
 - **Day filter**: "Alle dager" plus each date with its dataset title (e.g.
-  *Dagstur til Setesdal*). It filters tracks, stops, statistics, charts and
-  the municipality list.
+  *Dagstur til Setesdal*). It filters tracks, stops, statistics, charts, the
+  municipality list — and the map legend, which dims filtered-out days.
+- **Day-start markers**: when a single day is selected, a hollow violet ring
+  marks where that day began — derived from the previous evening's overnight
+  stop (day 1 has none; its start lies inside the privacy fence).
 - **Statistics**: distance and time in motion, total and per travel mode
   (car / walking / cycling), for the whole trip or the selected day.
 - **Administrative context**: borders and names for the 19 municipalities and
   3 counties the trip touches, bundled as static simplified GeoJSON — no
-  runtime boundary-API calls.
+  runtime boundary-API calls. Municipalities are **togglable**: click a chip
+  in the panel (or the polygon itself) to highlight its area on the map;
+  multi-select, none by default.
+- **Shareable views**: the selected day and highlighted municipalities live
+  in the URL hash (`#dag=2026-07-21&kommuner=Vinje,Tokke`), so any view can
+  be linked, and back/forward navigation works.
 
 ### Derived insights (and why these)
 
@@ -40,7 +48,10 @@ Timeline export.
    activity leg, split by mode; it shows motorway legs (~90–110 km/t) vs.
    mountain-road legs, and doubles as the accessible table view of the data.
 4. **Municipalities crossed per day** — the dataset records the crossing
-   order per day; chips in travel order complement the boundary layer.
+   order per day; togglable chips in travel order complement the boundary
+   layer and highlight areas on the map.
+5. **Stop-chart → map cross-link** — clicking a bar in the stop-duration
+   chart opens that stop's popup on the map.
 
 A time-of-day scrubber was considered and skipped: sampling is only every
 1–6 minutes with long dropouts, so scrubbing would interpolate exactly where

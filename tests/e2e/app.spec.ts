@@ -58,7 +58,7 @@ test.describe('initial load', () => {
     await expect(page).toHaveTitle(/Bobiltur i Sørøst-Norge/);
     await expect(page.locator('#map .leaflet-container, #map.leaflet-container')).toBeVisible();
     await expect(page.locator('.day-chip')).toHaveCount(6);
-    await expect(page.locator('.map-legend .legend-row')).toHaveCount(7); // 5 days + stop + overnight
+    await expect(page.locator('.map-legend .legend-row')).toHaveCount(8); // 5 days + stop + overnight + day start
     await expect(page.locator('#selection-title')).toHaveText('Alle dager');
   });
 
@@ -183,6 +183,170 @@ test.describe('stop popups', () => {
     await expect(popup).toContainText('Ankomst 20. juli 21:46');
     await expect(popup).toContainText('Avreise 21. juli 12:10');
     await expect(popup).toContainText('Varighet 14 t 25 min');
+  });
+});
+
+test.describe('wakeup (day start) markers', () => {
+  const WAKEUPS: Record<string, string> = {
+    '2026-07-21': 'Groven Camping',
+    '2026-07-22': 'Garvikstrondi Camping',
+    '2026-07-23': 'Åsgrav Family Camping',
+    '2026-07-24': 'First Camp Norsjø',
+  };
+
+  for (const [day, place] of Object.entries(WAKEUPS)) {
+    test(`day ${day} shows a clickable start marker at ${place}`, async ({ page }) => {
+      await open(page);
+      await chip(page, day).click();
+      const marker = page.locator('path.wakeup-marker');
+      await expect(marker).toHaveCount(1);
+      await marker.dispatchEvent('click');
+      const popup = page.locator('.leaflet-popup .stop-popup');
+      await expect(popup).toBeVisible();
+      await expect(popup).toContainText('Dagens start');
+      await expect(popup).toContainText(place);
+      await expect(popup).toContainText('Våknet her etter overnatting');
+      await expect(popup).toContainText('Avreise');
+    });
+  }
+
+  test('the first day and the all-days view have no wakeup marker', async ({ page }) => {
+    await open(page);
+    await expect(page.locator('path.wakeup-marker')).toHaveCount(0);
+    await chip(page, '2026-07-20').click();
+    await expect(page.locator('path.wakeup-marker')).toHaveCount(0);
+    // The panel notes what the day started from on later days.
+    await chip(page, '2026-07-21').click();
+    await expect(page.locator('#selection-sub')).toContainText(
+      'startet fra Groven Camping og Hyttegrend',
+    );
+  });
+});
+
+test.describe('municipality highlighting', () => {
+  test('chips toggle highlighted polygons on the map, multi-select, clearable', async ({ page }) => {
+    await open(page);
+    await expect(page.locator('body[data-boundaries-loaded="true"]')).toBeAttached();
+    // Default: nothing highlighted.
+    await expect(page.locator('path.kommune-highlighted')).toHaveCount(0);
+
+    const vinje = page.locator('.muni-chip[data-muni="Vinje"]');
+    await vinje.click();
+    await expect(vinje).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('path.kommune-highlighted')).toHaveCount(1);
+
+    await page.locator('.muni-chip[data-muni="Tokke"]').click();
+    await expect(page.locator('path.kommune-highlighted')).toHaveCount(2);
+
+    // Toggle off again.
+    await page.locator('.muni-chip[data-muni="Vinje"]').click();
+    await expect(page.locator('path.kommune-highlighted')).toHaveCount(1);
+
+    // Clear-all affordance.
+    await page.locator('#muni-clear').click();
+    await expect(page.locator('path.kommune-highlighted')).toHaveCount(0);
+    await expect(page.locator('#muni-clear')).toHaveCount(0);
+  });
+
+  test('clicking a municipality polygon on the map toggles its chip', async ({ page }) => {
+    await open(page);
+    await expect(page.locator('body[data-boundaries-loaded="true"]')).toBeAttached();
+    const polygons = page.locator('path.kommune-boundary');
+    await expect(polygons).toHaveCount(19);
+    await polygons.first().dispatchEvent('click');
+    await expect(page.locator('path.kommune-highlighted')).toHaveCount(1);
+    await expect(page.locator('.muni-chip[aria-pressed="true"]')).toHaveCount(1);
+  });
+
+  test('selection persists in the URL hash and is restored on load', async ({ page }) => {
+    await open(page);
+    await page.locator('.muni-chip[data-muni="Vinje"]').click();
+    await chip(page, '2026-07-21').click();
+    await expect(page).toHaveURL(/dag=2026-07-21/);
+    await expect(page).toHaveURL(/kommuner=Vinje/);
+
+    // Fresh load with the same hash restores the state.
+    await page.goto('/#dag=2026-07-21&kommuner=Vinje,Tokke');
+    await expect(page.locator('body[data-app-ready="true"]')).toBeAttached();
+    await expect(page.locator('#selection-title')).toHaveText(
+      'Dagstur til Setesdal',
+    );
+    await expect(page.locator('body[data-boundaries-loaded="true"]')).toBeAttached();
+    await expect(page.locator('path.kommune-highlighted')).toHaveCount(2);
+    await expect(
+      page.locator('.muni-chip[data-muni="Vinje"]'),
+    ).toHaveAttribute('aria-pressed', 'true');
+  });
+});
+
+test.describe('stop chart cross-link', () => {
+  test('clicking a chart row opens the stop popup on the map', async ({ page }) => {
+    await open(page);
+    await chip(page, '2026-07-22').click();
+    // Longest stop that day is Åsgrav Family Camping (sorted first).
+    await page.locator('#stop-chart g[data-stop]').first().dispatchEvent('click');
+    const popup = page.locator('.leaflet-popup .stop-popup');
+    await expect(popup).toBeVisible();
+    await expect(popup).toContainText('Åsgrav Family Camping');
+  });
+});
+
+test.describe('map polish', () => {
+  test('clicking a polygon never leaves a focus-ring rectangle', async ({ page }) => {
+    await open(page);
+    await expect(page.locator('body[data-boundaries-loaded="true"]')).toBeAttached();
+    const polygon = page.locator('path.kommune-boundary').first();
+    await polygon.dispatchEvent('click');
+    const outline = await polygon.evaluate(
+      (el) => getComputedStyle(el).outlineStyle,
+    );
+    expect(['none', 'auto']).toContain(outline);
+    // The pointer-focus case must resolve to no outline.
+    const focused = await page.evaluate(() => {
+      const el = document.querySelector('path.kommune-boundary');
+      if (!(el instanceof SVGElement)) return 'missing';
+      el.focus();
+      return el.matches(':focus-visible')
+        ? 'focus-visible'
+        : getComputedStyle(el).outlineStyle;
+    });
+    expect(focused === 'none' || focused === 'focus-visible').toBe(true);
+  });
+});
+
+test.describe('UI polish regressions', () => {
+  test('legend mirrors the day filter by dimming other days', async ({ page }) => {
+    await open(page);
+    await expect(page.locator('.map-legend .legend-row-muted')).toHaveCount(0);
+    await chip(page, '2026-07-21').click();
+    await expect(page.locator('.map-legend .legend-row-muted')).toHaveCount(4);
+    await expect(
+      page.locator('.legend-row-day[data-day="2026-07-21"]'),
+    ).not.toHaveClass(/legend-row-muted/);
+    await chip(page, '').click();
+    await expect(page.locator('.map-legend .legend-row-muted')).toHaveCount(0);
+  });
+
+  test('legend steps aside while a popup is open (mobile overlap fix)', async ({ page }) => {
+    await open(page);
+    await page.locator('path.stop-marker').first().dispatchEvent('click');
+    await expect(page.locator('.leaflet-popup .stop-popup')).toBeVisible();
+    await expect(page.locator('.map-legend')).toHaveClass(/map-legend-popup-open/);
+    await page.locator('a.leaflet-popup-close-button').dispatchEvent('click');
+    await expect(page.locator('.map-legend')).not.toHaveClass(
+      /map-legend-popup-open/,
+    );
+  });
+
+  test('map attribution is fully visible inside the viewport', async ({ page }) => {
+    await open(page);
+    const attribution = page.locator('.leaflet-control-attribution');
+    await expect(attribution).toBeVisible();
+    const box = (await attribution.boundingBox())!;
+    const viewport = page.viewportSize()!;
+    expect(box.y + box.height).toBeLessThanOrEqual(viewport.height + 1);
+    await expect(attribution).toContainText('Kartverket');
+    await expect(attribution).toContainText('OpenStreetMap');
   });
 });
 

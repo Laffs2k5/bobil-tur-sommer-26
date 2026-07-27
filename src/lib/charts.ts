@@ -13,6 +13,9 @@ export const DAY_COLORS: string[] = [
 ];
 export const OVERNIGHT_COLOR = '#4a3aa7'; // violet, reserved for overnight stops
 export const STOP_COLOR = '#2a78d6';
+// Green (slot 6) is unused by day tracks/stops, so a highlighted municipality
+// can never be mistaken for trip geometry.
+export const MUNI_HIGHLIGHT_COLOR = '#008300';
 const INK_PRIMARY = '#0b0b0b';
 const INK_SECONDARY = '#52514e';
 

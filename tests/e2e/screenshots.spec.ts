@@ -69,6 +69,25 @@ test('stop popup open', async ({ page }, testInfo) => {
   await page.screenshot({ path: shotPath(testInfo, 'stop-popup') });
 });
 
+test('wakeup marker popup', async ({ page }, testInfo) => {
+  await open(page);
+  await page.locator('.day-chip[data-day="2026-07-21"]').click();
+  await waitForTiles(page);
+  await page.locator('path.wakeup-marker').first().dispatchEvent('click');
+  await expect(page.locator('.leaflet-popup .stop-popup')).toBeVisible();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: shotPath(testInfo, 'wakeup-popup') });
+});
+
+test('municipalities highlighted', async ({ page }, testInfo) => {
+  await open(page);
+  await page.locator('.muni-chip[data-muni="Vinje"]').click();
+  await page.locator('.muni-chip[data-muni="Tokke"]').click();
+  await page.locator('.muni-chip[data-muni="Bykle"]').click();
+  await page.waitForTimeout(300);
+  await page.screenshot({ path: shotPath(testInfo, 'munis-highlighted') });
+});
+
 test('stats panel', async ({ page }, testInfo) => {
   await open(page);
   await page

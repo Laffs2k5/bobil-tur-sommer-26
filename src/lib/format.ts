@@ -11,6 +11,17 @@ export function modeLabel(mode: string): string {
   return MODE_LABELS[mode] ?? mode;
 }
 
+/** Emoji per mode — always paired with the text label, never alone. */
+export const MODE_EMOJI: Record<string, string> = {
+  [MODE_CAR]: '🚐',
+  [MODE_WALK]: '🚶',
+  [MODE_CYCLE]: '🚴',
+};
+
+export function modeEmoji(mode: string): string {
+  return MODE_EMOJI[mode] ?? '•';
+}
+
 /** "241 km" for large values, "2,9 km" (Norwegian decimal comma) under 10. */
 export function formatKm(km: number): string {
   if (km < 10) {

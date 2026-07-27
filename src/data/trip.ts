@@ -1,3 +1,4 @@
+import { localDate } from './parse';
 import type {
   DayTrack,
   Stop,
@@ -84,4 +85,16 @@ export function googleMapsUrl(stop: Stop): string | null {
 export function stopsForDay(stops: Stop[], day: string | null): Stop[] {
   if (day === null) return stops;
   return stops.filter((stop) => stop.date === day);
+}
+
+/**
+ * Where the given day started: the overnight stop from the *previous* evening
+ * whose departure falls on this day. Null for the first trip day (its start
+ * lies inside the privacy fence) and for the all-days view.
+ */
+export function wakeupStopForDay(stops: Stop[], day: string | null): Stop | null {
+  if (day === null) return null;
+  return (
+    stops.find((stop) => stop.overnight && localDate(stop.end) === day) ?? null
+  );
 }

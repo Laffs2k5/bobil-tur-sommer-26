@@ -9,7 +9,7 @@
   --border: rgba(11, 11, 11, 0.1);
   --accent: #2a78d6;
   --overnight: #4a3aa7;
-  --header-h: 106px;
+  --muni-highlight: #008300;
 }
 
 * {
@@ -26,6 +26,12 @@ body {
   font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
   background: var(--page);
   color: var(--ink-primary);
+  /* The header sizes itself; the layout row takes the rest — no guessed
+     header heights, so the attribution/scale bar can never be clipped. */
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
 }
 
 /* --- Header + day filter -------------------------------------------------- */
@@ -92,16 +98,22 @@ body {
 
 .day-chip[aria-pressed='true'] {
   border-bottom-color: var(--chip-color, var(--ink-primary));
-  background: #f1f0ec;
+  background: color-mix(in srgb, var(--chip-color, var(--ink-primary)) 10%, #fff);
+  border-color: color-mix(in srgb, var(--chip-color, var(--ink-primary)) 45%, #fff);
   font-weight: 600;
 }
 
 /* --- Layout ---------------------------------------------------------------- */
 
+.app-header {
+  flex: 0 0 auto;
+}
+
 .layout {
   display: grid;
   grid-template-columns: 400px 1fr;
-  height: calc(100vh - var(--header-h));
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .panel {
@@ -118,6 +130,13 @@ body {
 }
 
 @media (max-width: 820px) {
+  body {
+    /* Mobile scrolls the whole page (map on top, panel below). */
+    height: auto;
+    min-height: 100dvh;
+    display: block;
+  }
+
   .layout {
     display: flex;
     flex-direction: column;
@@ -190,6 +209,15 @@ body {
   line-height: 1.25;
 }
 
+.stat-tile .stat-sub {
+  font-size: 11px;
+  color: var(--ink-muted);
+}
+
+.mode-emoji {
+  font-size: 13px;
+}
+
 .mode-table {
   width: 100%;
   border-collapse: collapse;
@@ -253,9 +281,41 @@ body {
   border: 1px solid var(--border);
   border-radius: 999px;
   padding: 2px 9px;
+  font: inherit;
   font-size: 12px;
   background: var(--page);
   color: var(--ink-secondary);
+  cursor: pointer;
+}
+
+.muni-chip:hover {
+  background: #f1f0ec;
+  color: var(--ink-primary);
+}
+
+.muni-chip-on {
+  background: #e3f1e3;
+  border-color: var(--muni-highlight);
+  color: #0b3d0b;
+  font-weight: 600;
+}
+
+.muni-clear {
+  display: inline-block;
+  margin-top: 8px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-1);
+  font: inherit;
+  font-size: 12px;
+  color: var(--ink-secondary);
+  cursor: pointer;
+  padding: 2px 10px;
+}
+
+.muni-clear:hover {
+  background: #f1f0ec;
+  color: var(--ink-primary);
 }
 
 .legs-table {
@@ -297,21 +357,34 @@ body {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 8px 10px;
+  margin: 10px 10px 0 0;
   font: 12px system-ui, sans-serif;
   color: var(--ink-primary);
   box-shadow: 0 1px 4px rgba(11, 11, 11, 0.12);
-  max-width: 240px;
+  max-width: 260px;
 }
 
-/* Compact legend on small screens: dates only, so the map stays visible. */
+/* Legend rows for filtered-out days recede, matching the map. */
+.map-legend .legend-row-muted {
+  opacity: 0.35;
+}
+
+/* Compact legend on small screens: marker explanations only — the day
+   colors are already carried by the header chips and the tracks. The extra
+   class in the selector outranks the later `.legend-row` display rule. */
 @media (max-width: 820px) {
   .map-legend {
-    max-width: 130px;
-    padding: 6px 8px;
+    padding: 5px 8px;
     font-size: 11px;
   }
 
-  .map-legend .legend-title {
+  .map-legend .legend-row.legend-row-day {
+    display: none;
+  }
+
+  /* Leaflet controls live in a sibling stacking context above every map
+     pane, so a popup can never out-stack the legend — step aside instead. */
+  .map-legend.map-legend-popup-open {
     display: none;
   }
 }
@@ -348,6 +421,20 @@ body {
 .leaflet-popup-content {
   font: 13px/1.45 system-ui, sans-serif;
   margin: 12px 14px;
+}
+
+@media (max-width: 820px) {
+  .leaflet-popup-content {
+    max-width: min(72vw, 260px) !important;
+  }
+
+  /* Comfortable touch target for the popup close button. */
+  .leaflet-container a.leaflet-popup-close-button {
+    width: 32px;
+    height: 32px;
+    font-size: 20px;
+    line-height: 32px;
+  }
 }
 
 .stop-popup h3 {
@@ -387,4 +474,47 @@ body {
 
 .kommune-tooltip {
   font: 12px system-ui, sans-serif;
+}
+
+/*
+ * Leaflet gives interactive SVG paths a tabindex; on mouse click, browsers
+ * then draw the default focus ring around the path's BOUNDING BOX — a huge
+ * black rounded rectangle over the map. Suppress it for pointer interaction
+ * but keep a visible ring for keyboard users.
+ */
+.leaflet-container path.leaflet-interactive:focus:not(:focus-visible) {
+  outline: none;
+}
+
+.leaflet-container path.leaflet-interactive:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Chart rows that open a stop popup on the map. */
+#stop-chart g[data-stop] {
+  cursor: pointer;
+}
+
+#stop-chart g[data-stop]:hover path {
+  filter: brightness(0.85);
+}
+
+.legend-marker-hollow {
+  background: #fff;
+  border-width: 3px;
+  border-style: solid;
+  box-shadow: none;
+}
+
+.stop-popup .popup-wakeup {
+  display: inline-block;
+  background: #fff;
+  color: var(--overnight);
+  border: 2px solid var(--overnight);
+  font-size: 11px;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 0 8px;
+  margin-bottom: 5px;
 }

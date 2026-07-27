@@ -7,6 +7,7 @@ import {
   formatSpeed,
   formatTime,
   formatTimestamp,
+  modeEmoji,
   modeLabel,
   weekday,
 } from '../../src/lib/format';
@@ -74,11 +75,18 @@ describe('day and timestamp formatting (Europe/Oslo wall time)', () => {
   });
 });
 
-describe('modeLabel', () => {
+describe('modeLabel / modeEmoji', () => {
   it('maps the three known modes to Norwegian and passes unknowns through', () => {
     expect(modeLabel('IN_PASSENGER_VEHICLE')).toBe('Bil');
     expect(modeLabel('WALKING')).toBe('Til fots');
     expect(modeLabel('CYCLING')).toBe('Sykkel');
     expect(modeLabel('FLYING')).toBe('FLYING');
+  });
+
+  it('pairs each known mode with an emoji and falls back to a bullet', () => {
+    expect(modeEmoji('IN_PASSENGER_VEHICLE')).toBe('🚐');
+    expect(modeEmoji('WALKING')).toBe('🚶');
+    expect(modeEmoji('CYCLING')).toBe('🚴');
+    expect(modeEmoji('FLYING')).toBe('•');
   });
 });
